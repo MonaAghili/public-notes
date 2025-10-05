@@ -4,10 +4,38 @@ import matter from 'gray-matter';
 import fs from 'fs/promises';
 import path from 'path';
 import chokidar from 'chokidar';
+import DOMPurify from 'isomorphic-dompurify';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CONTENT_DIR = path.join(__dirname, '../content');
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+});
+
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit search to 30 requests per minute
+  message: 'Too many search requests, please try again later.',
+});
 
 // Set up view engine
 app.set('view engine', 'ejs');
@@ -81,17 +109,33 @@ async function buildFileTree(dir: string, relativePath: string = ''): Promise<Fi
   });
 }
 
+// Function to validate slug to prevent path traversal
+function validateSlug(slug: string): boolean {
+  // Reject slugs with path traversal attempts
+  if (slug.includes('..')) return false;
+  // Only allow alphanumeric, hyphens, underscores, and forward slashes
+  if (!/^[a-zA-Z0-9/_-]+$/.test(slug)) return false;
+  return true;
+}
+
 // Function to read and parse markdown file
 async function parseMarkdownFile(filePath: string, relativePath: string): Promise<PageData> {
   const fileContent = await fs.readFile(filePath, 'utf-8');
   const { data: frontmatter, content } = matter(fileContent);
   const html = await marked(content);
 
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedHtml = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id'],
+    ALLOW_DATA_ATTR: false,
+  });
+
   const slug = relativePath.replace(/\.md$/, '').replace(/\\/g, '/');
 
   return {
     frontmatter,
-    content: html,
+    content: sanitizedHtml,
     slug,
     filePath,
     relativePath,
@@ -165,21 +209,27 @@ function watchMarkdownFiles() {
 }
 
 // Routes
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.render('app', { fileTree });
 });
 
-app.get(/^\/page\/(.+)/, (req: Request, res: Response) => {
+app.get(/^\/page\/([a-zA-Z0-9/_-]+)$/, (_req: Request, res: Response) => {
   res.render('app', { fileTree });
 });
 
-// API endpoints
-app.get('/api/tree', (req: Request, res: Response) => {
+// API endpoints with rate limiting
+app.get('/api/tree', apiLimiter, (_req: Request, res: Response) => {
   res.json(fileTree);
 });
 
-app.get(/^\/api\/page\/(.+)/, (req: Request, res: Response) => {
+app.get(/^\/api\/page\/([a-zA-Z0-9/_-]+)$/, apiLimiter, (req: Request, res: Response) => {
   const slug = req.params[0];
+
+  // Validate slug to prevent path traversal
+  if (!validateSlug(slug)) {
+    return res.status(400).json({ error: 'Invalid page path' });
+  }
+
   const page = markdownCache.get(slug);
 
   if (!page) {
@@ -194,11 +244,16 @@ app.get(/^\/api\/page\/(.+)/, (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/search', (req: Request, res: Response) => {
+app.get('/api/search', searchLimiter, (req: Request, res: Response) => {
   const query = (req.query.q as string || '').toLowerCase();
 
   if (!query) {
     return res.json([]);
+  }
+
+  // Limit query length to prevent DoS
+  if (query.length > 100) {
+    return res.status(400).json({ error: 'Query too long' });
   }
 
   const results = Array.from(markdownCache.values())

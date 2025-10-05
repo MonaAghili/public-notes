@@ -2,13 +2,25 @@ import { marked } from 'marked';
 import matter from 'gray-matter';
 import fs from 'fs/promises';
 import path from 'path';
+import DOMPurify from 'isomorphic-dompurify';
 
 const CONTENT_DIR = path.join(__dirname, '../content');
 const OUTPUT_DIR = path.join(__dirname, '../docs');
 const PUBLIC_DIR = path.join(__dirname, '../public');
 
 // Base path for GitHub Pages (empty for root domain, or '/repo-name' for project pages)
-const BASE_PATH = process.env.BASE_PATH || '';
+// Validate BASE_PATH to prevent injection attacks
+function validateBasePath(basePath: string): string {
+  if (!basePath) return '';
+  // Only allow alphanumeric, hyphens, underscores, and forward slashes
+  if (!/^[a-zA-Z0-9/_-]+$/.test(basePath)) {
+    throw new Error('Invalid BASE_PATH: contains unsafe characters');
+  }
+  // Remove leading/trailing slashes
+  return basePath.replace(/^\/+|\/+$/g, '');
+}
+
+const BASE_PATH = validateBasePath(process.env.BASE_PATH || '');
 
 // Configure marked
 marked.setOptions({
@@ -78,11 +90,18 @@ async function parseMarkdownFile(filePath: string, relativePath: string): Promis
   const { data: frontmatter, content } = matter(fileContent);
   const html = await marked(content);
 
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedHtml = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'div', 'span'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id'],
+    ALLOW_DATA_ATTR: false,
+  });
+
   const slug = relativePath.replace(/\.md$/, '').replace(/\\/g, '/');
 
   return {
     frontmatter,
-    content: html,
+    content: sanitizedHtml,
     slug,
     title: frontmatter.title || slug,
     relativePath,

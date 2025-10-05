@@ -136,7 +136,8 @@ article header time {
   color: var(--text-secondary);
 }
 
-.content {
+.content,
+.markdown-content {
   font-size: 1.05rem;
   line-height: 1.8;
 }
@@ -146,7 +147,13 @@ article header time {
 .content h3,
 .content h4,
 .content h5,
-.content h6 {
+.content h6,
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
   margin-top: 2.5rem;
   margin-bottom: 1.25rem;
   color: var(--text-primary);
@@ -155,38 +162,51 @@ article header time {
 
 .content h1:first-child,
 .content h2:first-child,
-.content h3:first-child {
+.content h3:first-child,
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
   margin-top: 0;
 }
 
-.content h1 { font-size: 2rem; }
-.content h2 { font-size: 1.75rem; }
-.content h3 { font-size: 1.5rem; }
+.content h1,
+.markdown-content h1 { font-size: 2rem; }
+.content h2,
+.markdown-content h2 { font-size: 1.75rem; }
+.content h3,
+.markdown-content h3 { font-size: 1.5rem; }
 
-.content p {
+.content p,
+.markdown-content p {
   margin-bottom: 1.25rem;
 }
 
-.content a {
+.content a,
+.markdown-content a {
   color: var(--accent);
   text-decoration: none;
 }
 
-.content a:hover {
+.content a:hover,
+.markdown-content a:hover {
   text-decoration: underline;
 }
 
 .content ul,
-.content ol {
+.content ol,
+.markdown-content ul,
+.markdown-content ol {
   margin-left: 2rem;
   margin-bottom: 1.25rem;
 }
 
-.content li {
+.content li,
+.markdown-content li {
   margin-bottom: 0.5rem;
 }
 
-.content code {
+.content code,
+.markdown-content code {
   background: var(--bg-secondary);
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
@@ -194,7 +214,8 @@ article header time {
   font-size: 0.9em;
 }
 
-.content pre {
+.content pre,
+.markdown-content pre {
   background: var(--bg-secondary);
   padding: 1rem;
   border-radius: 6px;
@@ -202,12 +223,14 @@ article header time {
   margin-bottom: 1.25rem;
 }
 
-.content pre code {
+.content pre code,
+.markdown-content pre code {
   background: none;
   padding: 0;
 }
 
-.content blockquote {
+.content blockquote,
+.markdown-content blockquote {
   border-left: 4px solid var(--accent);
   padding-left: 1.5rem;
   margin: 1.5rem 0;
@@ -215,27 +238,32 @@ article header time {
   font-style: italic;
 }
 
-.content img {
+.content img,
+.markdown-content img {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
   margin: 1.5rem 0;
 }
 
-.content table {
+.content table,
+.markdown-content table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 1.25rem;
 }
 
 .content table th,
-.content table td {
+.content table td,
+.markdown-content table th,
+.markdown-content table td {
   border: 1px solid var(--border);
   padding: 0.75rem;
   text-align: left;
 }
 
-.content table th {
+.content table th,
+.markdown-content table th {
   background: var(--bg-secondary);
   font-weight: 600;
 }
