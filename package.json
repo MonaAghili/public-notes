@@ -1,0 +1,32 @@
+{
+  "name": "static-site-generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --exec tsx src/server.ts",
+    "build": "tsc && tsx src/build.ts",
+    "start": "node dist/server.js",
+    "deploy": "npm run build && gh-pages -d docs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "gh-pages": "^6.3.0",
+    "gray-matter": "^4.0.3",
+    "marked": "^16.3.0"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.3",
+    "@types/marked": "^5.0.2",
+    "@types/node": "^24.6.2",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

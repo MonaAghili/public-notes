@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Notes</title>
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>My Notes</h1>
+    </header>
+
+    <main>
+      <% if (pages.length === 0) { %>
+        <div class="empty-state">
+          <p>No pages yet. Create a markdown file in the <code>content/</code> directory to get started!</p>
+        </div>
+      <% } else { %>
+        <div class="page-grid">
+          <% pages.forEach(page => { %>
+            <a href="/page/<%= page.slug %>" class="page-card">
+              <h2><%= page.title %></h2>
+              <% if (page.description) { %>
+                <p class="description"><%= page.description %></p>
+              <% } %>
+              <% if (page.date) { %>
+                <time><%= new Date(page.date).toLocaleDateString() %></time>
+              <% } %>
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+    </main>
+  </div>
+</body>
+</html>

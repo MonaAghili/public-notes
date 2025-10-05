@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  <div class="container">
+    <nav class="breadcrumb">
+      <a href="/">← Back to Home</a>
+    </nav>
+
+    <article>
+      <header>
+        <h1><%= title %></h1>
+        <% if (frontmatter.date) { %>
+          <time><%= new Date(frontmatter.date).toLocaleDateString() %></time>
+        <% } %>
+        <% if (frontmatter.tags && frontmatter.tags.length > 0) { %>
+          <div class="tags">
+            <% frontmatter.tags.forEach(tag => { %>
+              <span class="tag"><%= tag %></span>
+            <% }) %>
+          </div>
+        <% } %>
+      </header>
+
+      <div class="content">
+        <%- content %>
+      </div>
+    </article>
+  </div>
+</body>
+</html>

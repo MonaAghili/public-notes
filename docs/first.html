@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>First</title>
+  <link rel="stylesheet" href="public/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>My Notes</h2>
+        <button class="close-sidebar" id="closeSidebar" aria-label="Close sidebar">✕</button>
+      </div>
+
+      <nav class="file-tree" id="fileTree">
+        
+          <a href="first.html" class="file-item active" data-slug="first">
+            <span class="file-name">First</span>
+          </a>
+        
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <!-- Mobile Menu Toggle -->
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="content-wrapper" id="contentWrapper">
+        
+    <article class="page-content">
+      <header class="page-header">
+        <h1>First</h1>
+        <time>1/15/2025</time>
+        
+          <div class="tags">
+            <span class="tag">getting-started</span><span class="tag">guide</span>
+          </div>
+        
+      </header>
+      <div class="markdown-content">
+        <h1>First content</h1>
+<p>this is a test</p>
+<h2>this is second title</h2>
+<p>the is second description</p>
+
+      </div>
+    </article>
+  
+      </div>
+    </main>
+  </div>
+  <script>
+    function toggleFolder(element) {
+      const folder = element.closest('.folder-item');
+      const children = folder.querySelector('.folder-children');
+      folder.classList.toggle('expanded');
+      if (children) {
+        children.style.display = folder.classList.contains('expanded') ? 'block' : 'none';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Folder toggle handlers
+      document.querySelectorAll('.folder-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleFolder(header);
+        });
+      });
+
+      // Mobile sidebar toggle
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const closeSidebar = document.getElementById('closeSidebar');
+      const sidebar = document.getElementById('sidebar');
+
+      if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', () => {
+          sidebar.classList.add('mobile-open');
+          mobileMenuToggle.style.opacity = '0';
+          mobileMenuToggle.style.visibility = 'hidden';
+        });
+      }
+
+      if (closeSidebar) {
+        closeSidebar.addEventListener('click', () => {
+          sidebar.classList.remove('mobile-open');
+          mobileMenuToggle.style.opacity = '1';
+          mobileMenuToggle.style.visibility = 'visible';
+        });
+      }
+    });
+  </script>
+</body>
+</html>

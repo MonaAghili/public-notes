@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">My Wiki</title>
+  <meta name="description" content="" id="pageDescription">
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>My Notes</h2>
+        <button class="close-sidebar" id="closeSidebar" aria-label="Close sidebar">✕</button>
+      </div>
+
+      <!-- Search Bar -->
+      <!-- <div class="search-container">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Search notes..."
+          class="search-input"
+        />
+        <div class="search-results" id="searchResults"></div>
+      </div> -->
+
+      <!-- File Tree -->
+      <nav class="file-tree" id="fileTree">
+        <% if (fileTree.length === 0) { %>
+          <div class="empty-tree">
+            <p>No files yet</p>
+            <small>Add .md files to content/</small>
+          </div>
+        <% } else { %>
+          <%- renderTree(fileTree) %>
+        <% } %>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Mobile Menu Toggle -->
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="content-wrapper" id="contentWrapper">
+        <div class="welcome-screen">
+          <h1>Welcome to Your Notes</h1>
+          <p>Select a note from the sidebar to get started</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // State
+    let currentPage = null;
+    let searchTimeout = null;
+
+    // Get current page from URL
+    function getCurrentSlugFromURL() {
+      const path = window.location.pathname;
+      if (path.startsWith('/page/')) {
+        return path.substring(6);
+      }
+      return null;
+    }
+
+    // Load page content
+    async function loadPage(slug) {
+      if (!slug) return;
+
+      try {
+        const response = await fetch(`/api/page/${slug}`);
+        if (!response.ok) throw new Error('Page not found');
+
+        const data = await response.json();
+        currentPage = slug;
+
+        // Update page title and meta description
+        document.getElementById('pageTitle').textContent = data.title || 'My Wiki';
+        const descMeta = document.getElementById('pageDescription');
+        if (data.frontmatter.description) {
+          descMeta.setAttribute('content', data.frontmatter.description);
+        }
+        document.title = data.title || 'My Wiki';
+
+        // Update URL without reloading
+        history.pushState({ slug }, '', `/page/${slug}`);
+
+        // Render content
+        const wrapper = document.getElementById('contentWrapper');
+        wrapper.innerHTML = `
+          <article>
+            <header>
+              <h1>${escapeHtml(data.title)}</h1>
+              ${data.frontmatter.date ? `<time>${new Date(data.frontmatter.date).toLocaleDateString()}</time>` : ''}
+              ${data.frontmatter.tags && data.frontmatter.tags.length ? `
+                <div class="tags">
+                  ${data.frontmatter.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </header>
+            <div class="content">
+              ${data.content}
+            </div>
+          </article>
+        `;
+
+        // Update active state in sidebar
+        document.querySelectorAll('.file-item').forEach(item => {
+          const itemSlug = item.dataset.slug;
+          if (itemSlug === slug) {
+            item.classList.add('active');
+          } else {
+            item.classList.remove('active');
+          }
+        });
+
+      } catch (error) {
+        console.error('Error loading page:', error);
+
+        // Reset title on error
+        document.title = 'Page Not Found - My Wiki';
+        document.getElementById('pageTitle').textContent = 'Page Not Found';
+
+        document.getElementById('contentWrapper').innerHTML = `
+          <div class="error-screen">
+            <h1>Page Not Found</h1>
+            <p>The page "${escapeHtml(slug)}" could not be found.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Search functionality
+    async function performSearch(query) {
+      const resultsContainer = document.getElementById('searchResults');
+
+      if (!query.trim()) {
+        resultsContainer.style.display = 'none';
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+
+        if (results.length === 0) {
+          resultsContainer.innerHTML = '<div class="search-empty">No results found</div>';
+        } else {
+          resultsContainer.innerHTML = results.map(result => `
+            <a href="/page/${result.slug}" class="search-result-item" data-slug="${result.slug}">
+              <div class="search-result-title">${escapeHtml(result.title)}</div>
+              ${result.description ? `<div class="search-result-desc">${escapeHtml(result.description)}</div>` : ''}
+            </a>
+          `).join('');
+
+          // Add click handlers
+          resultsContainer.querySelectorAll('.search-result-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+              e.preventDefault();
+              const slug = item.dataset.slug;
+              loadPage(slug);
+              document.getElementById('searchInput').value = '';
+              resultsContainer.style.display = 'none';
+            });
+          });
+        }
+
+        resultsContainer.style.display = 'block';
+      } catch (error) {
+        console.error('Search error:', error);
+      }
+    }
+
+    // File tree toggle
+    function toggleFolder(element) {
+      const folder = element.closest('.folder-item');
+      const children = folder.querySelector('.folder-children');
+      const icon = folder.querySelector('.folder-icon');
+
+      folder.classList.toggle('expanded');
+      if (children) {
+        children.style.display = folder.classList.contains('expanded') ? 'block' : 'none';
+      }
+    }
+
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load initial page if in URL
+      const initialSlug = getCurrentSlugFromURL();
+      if (initialSlug) {
+        loadPage(initialSlug);
+      }
+
+      // File tree click handlers
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          const slug = item.dataset.slug;
+          loadPage(slug);
+        });
+      });
+
+      // Folder toggle handlers
+      document.querySelectorAll('.folder-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleFolder(header);
+        });
+      });
+
+      // Search input
+      /* const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            performSearch(e.target.value);
+          }, 300);
+        });
+
+        // Click outside search to close
+        document.addEventListener('click', (e) => {
+          const searchContainer = document.querySelector('.search-container');
+          if (searchContainer && !searchContainer.contains(e.target)) {
+            document.getElementById('searchResults').style.display = 'none';
+          }
+        });
+      } */
+
+      // Mobile sidebar toggle
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const closeSidebar = document.getElementById('closeSidebar');
+      const sidebar = document.getElementById('sidebar');
+
+      if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', () => {
+          console.log('Hamburger clicked, opening sidebar');
+          sidebar.classList.add('mobile-open');
+          mobileMenuToggle.style.opacity = '0';
+          mobileMenuToggle.style.visibility = 'hidden';
+        });
+      } else {
+        console.log('Mobile menu toggle button not found');
+      }
+
+      if (closeSidebar) {
+        closeSidebar.addEventListener('click', () => {
+          sidebar.classList.remove('mobile-open');
+          mobileMenuToggle.style.opacity = '1';
+          mobileMenuToggle.style.visibility = 'visible';
+        });
+      }
+
+      // Close sidebar when clicking a file on mobile
+      document.querySelectorAll('.file-item').forEach(item => {
+        const originalClick = item.onclick;
+        item.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            sidebar.classList.remove('mobile-open');
+            mobileMenuToggle.style.opacity = '1';
+            mobileMenuToggle.style.visibility = 'visible';
+          }
+        });
+      });
+
+      // Handle browser back/forward
+      window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.slug) {
+          loadPage(e.state.slug);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+
+<%
+function renderTree(nodes) {
+  if (!nodes || nodes.length === 0) return '';
+
+  return nodes.map(node => {
+    if (node.type === 'folder') {
+      const hasChildren = node.children && node.children.length > 0;
+      return `
+        <div class="folder-item ${hasChildren ? 'has-children' : ''}">
+          <div class="folder-header">
+            <span class="folder-icon">▸</span>
+            <span class="folder-name">${node.name}</span>
+          </div>
+          ${hasChildren ? `<div class="folder-children" style="display: none;">${renderTree(node.children)}</div>` : ''}
+        </div>
+      `;
+    } else {
+      const slug = node.path.replace(/\.md$/, '').replace(/\\/g, '/');
+      return `
+        <a href="/page/${slug}" class="file-item" data-slug="${slug}">
+          <span class="file-name">${node.title || node.name}</span>
+        </a>
+      `;
+    }
+  }).join('');
+}
+%>
